@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmartWard — Patient Monitoring Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --card: #21263a;
+      --border: #2e3550; --text: #e2e8f0; --muted: #8892a4;
+      --teal: #2dd4bf; --amber: #fbbf24; --coral: #f87171;
+      --blue: #60a5fa; --green: #4ade80; --purple: #a78bfa;
+    }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+    header h1 span { color: var(--teal); }
+    #status-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--muted);
+    }
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    #status-dot.warn { background: var(--amber); }
+    #status-dot.alert { background: var(--coral); animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; padding: 20px 24px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .card-value { font-size: 32px; font-weight: 700; line-height: 1; }
+    .card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .badge {
+      padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    .badge.normal { background: rgba(74,222,128,0.15); color: var(--green); }
+    .badge.alert  { background: rgba(248,113,113,0.15); color: var(--coral); }
+    .badge.warn   { background: rgba(251,191,36,0.15); color: var(--amber); }
+
+    canvas { max-height: 140px; }
+
+    .alerts-section { padding: 0 24px 24px; }
+    .alerts-section h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .alert-list { display: flex; flex-direction: column; gap: 8px; }
+    .alert-item {
+      background: var(--card); border: 1px solid rgba(248,113,113,0.3);
+      border-left: 3px solid var(--coral); border-radius: 8px;
+      padding: 10px 14px; font-size: 13px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .alert-item .alert-type { font-weight: 600; color: var(--coral); text-transform: capitalize; }
+    .alert-item .alert-meta { color: var(--muted); font-size: 11px; }
+    #no-alerts { color: var(--muted); font-size: 13px; padding: 12px 0; }
+
+    footer { padding: 16px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Smart<span>Ward</span> — Patient Monitoring</h1>
+  <div id="status-badge">
+    <div id="status-dot"></div>
+    <span id="status-text">Connecting...</span>
+    <span id="last-update"></span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- Heart Rate card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">❤ Heart Rate — P001</span>
+      <span class="badge normal" id="hr-badge">Normal</span>
+    </div>
+    <div>
+      <div class="card-value" id="hr-value" style="color:var(--coral)">—</div>
+      <div class="card-sub">bpm</div>
+    </div>
+    <canvas id="hr-chart"></canvas>
+  </div>
+
+  <!-- SpO2 card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🫁 Blood Oxygen (SpO₂) — P001</span>
+      <span class="badge normal" id="spo2-badge">Normal</span>
+    </div>
+    <div>
+      <div class="card-value" id="spo2-value" style="color:var(--blue)">—</div>
+      <div class="card-sub">% saturation</div>
+    </div>
+    <canvas id="spo2-chart"></canvas>
+  </div>
+
+  <!-- Temperature card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🌡 Ward Temperature — WARD-A</span>
+      <span class="badge normal" id="temp-badge">Normal</span>
+    </div>
+    <div>
+      <div class="card-value" id="temp-value" style="color:var(--amber)">—</div>
+      <div class="card-sub">°C</div>
+    </div>
+    <canvas id="temp-chart"></canvas>
+  </div>
+
+  <!-- Humidity card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">💧 Ward Humidity — WARD-A</span>
+      <span class="badge normal" id="hum-badge">Normal</span>
+    </div>
+    <div>
+      <div class="card-value" id="hum-value" style="color:var(--purple)">—</div>
+      <div class="card-sub">%RH</div>
+    </div>
+    <canvas id="hum-chart"></canvas>
+  </div>
+
+</div>
+
+<!-- Recent alerts -->
+<div class="alerts-section">
+  <h2>Recent Alerts</h2>
+  <div class="alert-list" id="alert-list">
+    <div id="no-alerts">No alerts detected.</div>
+  </div>
+</div>
+
+<footer>SmartWard IoT Monitoring · NCI MSc Cloud Computing 2026 · Data refreshes every 10s</footer>
+
+<script>
+  // ── Config ─────────────────────────────────────────────────────────────────
+  // Replace with your API Gateway base URL before deploying
+  const API_BASE = window.API_BASE || "http://localhost:5001";
+  const REFRESH_MS = 10_000;
+  const MAX_POINTS = 30;
+
+  // ── Chart factory ──────────────────────────────────────────────────────────
+  function makeChart(id, color, label, yMin, yMax) {
+    const ctx = document.getElementById(id).getContext("2d");
+    return new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label,
+          data: [],
+          borderColor: color,
+          backgroundColor: color + "22",
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.35,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: { duration: 300 },
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: {
+          x: { display: false },
+          y: {
+            min: yMin, max: yMax,
+            grid: { color: "rgba(255,255,255,0.04)" },
+            ticks: { color: "#8892a4", font: { size: 10 } },
+          }
+        }
+      }
+    });
+  }
+
+  const charts = {
+    heart_rate:  makeChart("hr-chart",   "#f87171", "bpm",   40,  160),
+    spo2:        makeChart("spo2-chart", "#60a5fa", "SpO2",  80,  100),
+    temperature: makeChart("temp-chart", "#fbbf24", "°C",    14,  30),
+    humidity:    makeChart("hum-chart",  "#a78bfa", "%RH",   20,  80),
+  };
+
+  function addPoint(chart, label, value) {
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.labels.length > MAX_POINTS) {
+      chart.data.labels.shift();
+      chart.data.datasets[0].data.shift();
+    }
+    chart.update("none");
+  }
+
+  // ── Fetch helpers ──────────────────────────────────────────────────────────
+  async function fetchReadings(sensorType, params = {}) {
+    const qs = new URLSearchParams({ sensor_type: sensorType, limit: 50, ...params });
+    const resp = await fetch(`${API_BASE}/readings?${qs}`);
+    if (!resp.ok) return null;
+    return resp.json();
+  }
+
+  async function fetchAlerts() {
+    const resp = await fetch(`${API_BASE}/alerts?limit=10`);
+    if (!resp.ok) return null;
+    return resp.json();
+  }
+
+  // ── Update UI ─────────────────────────────────────────────────────────────
+  function updateCard(valueId, badgeId, chart, readings, normalMin, normalMax) {
+    if (!readings || readings.length === 0) return;
+    const latest = readings[0];
+    const val = parseFloat(latest.value);
+
+    document.getElementById(valueId).textContent = isNaN(val) ? "—" : val.toFixed(1);
+
+    const badge = document.getElementById(badgeId);
+    const isAlert = val < normalMin || val > normalMax;
+    badge.textContent = isAlert ? "Alert" : "Normal";
+    badge.className = "badge " + (isAlert ? "alert" : "normal");
+
+    // Add all fetched points (newest first → reverse for chart)
+    const ordered = [...readings].reverse();
+    ordered.forEach(r => {
+      const t = new Date(r.timestamp).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      addPoint(chart, t, parseFloat(r.value));
+    });
+  }
+
+  function renderAlerts(alerts) {
+    const list = document.getElementById("alert-list");
+    if (!alerts || alerts.length === 0) {
+      list.innerHTML = '<div id="no-alerts">No alerts detected.</div>';
+      return;
+    }
+    list.innerHTML = alerts.map(a => {
+      const ts = new Date(a.timestamp || a.sk?.split("#")[1] || "").toLocaleTimeString("en-IE");
+      const entity = a.patient_id || a.ward_id || "—";
+      return `
+        <div class="alert-item">
+          <div>
+            <span class="alert-type">${(a.sensor_type || "").replace(/_/g," ")}</span>
+            — value: <strong>${parseFloat(a.value).toFixed(1)} ${a.unit || ""}</strong>
+            &nbsp;·&nbsp; ${entity}
+          </div>
+          <div class="alert-meta">${ts}</div>
+        </div>`;
+    }).join("");
+  }
+
+  // ── Refresh cycle ──────────────────────────────────────────────────────────
+  async function refresh() {
+    const dot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+    try {
+      const [hr, spo2, temp, hum, alertData] = await Promise.all([
+        fetchReadings("heart_rate", { patient_id: "P001" }),
+        fetchReadings("spo2",       { patient_id: "P001" }),
+        fetchReadings("temperature",{ ward_id: "WARD-A" }),
+        fetchReadings("humidity",   { ward_id: "WARD-A" }),
+        fetchAlerts(),
+      ]);
+
+      updateCard("hr-value",   "hr-badge",   charts.heart_rate,  hr?.readings,   60, 100);
+      updateCard("spo2-value", "spo2-badge", charts.spo2,        spo2?.readings, 94, 100);
+      updateCard("temp-value", "temp-badge", charts.temperature, temp?.readings, 18,  24);
+      updateCard("hum-value",  "hum-badge",  charts.humidity,    hum?.readings,  40,  60);
+      renderAlerts(alertData?.alerts);
+
+      const hasAlerts = alertData?.alerts?.length > 0;
+      dot.className = hasAlerts ? "alert" : "";
+      statusText.textContent = hasAlerts ? "Alerts active" : "Live";
+      document.getElementById("last-update").textContent =
+        "· Updated " + new Date().toLocaleTimeString("en-IE");
+
+    } catch (err) {
+      dot.className = "warn";
+      statusText.textContent = "API unreachable";
+      console.error(err);
+    }
+  }
+
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

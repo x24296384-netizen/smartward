@@ -1,0 +1,80 @@
+name: SmartWard CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Lint and test ─────────────────────────────────────────────────────────
+  lint-and-test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install flake8 pytest boto3 moto
+
+      - name: Lint with flake8
+        run: |
+          flake8 sensors/ fog_node/ backend/ \
+            --max-line-length=100 \
+            --exclude=__pycache__
+
+      - name: Run unit tests
+        run: pytest tests/ -v --tb=short
+        env:
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+
+  # ── Package and deploy Lambdas ─────────────────────────────────────────────
+  deploy-lambdas:
+    name: Deploy Lambda Functions
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Package and deploy sqs_processor Lambda
+        run: |
+          cd backend/lambda_functions
+          zip sqs_processor.zip sqs_processor.py
+          aws lambda update-function-code \
+            --function-name smartward-sqs-processor \
+            --zip-file fileb://sqs_processor.zip
+          echo "✓ sqs_processor deployed"
+
+      - name: Package and deploy dashboard_api Lambda
+        run: |
+          cd backend/lambda_functions
+          zip dashboard_api.zip dashboard_api.py
+          aws lambda update-function-code \
+            --function-name smartward-dashboard-api \
+            --zip-file fileb://dashboard_api.zip
+          echo "✓ dashboard_api deployed"
+
+      - name: Deploy dashboard to S3 (static hosting)
+        run: |
+          aws s3 sync dashboard/ s3://${{ secrets.S3_DASHBOARD_BUCKET }}/ \
+            --delete \
+            --cache-control "max-age=60"
+          echo "✓ Dashboard synced to S3"
