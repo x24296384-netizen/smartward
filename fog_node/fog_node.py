@@ -42,7 +42,7 @@ VALIDATION_RULES = {
 ALERT_THRESHOLDS = {
     "heart_rate": {"low": 40, "high": 130},
     "spo2":       {"low": 90, "high": None},
-    "temperature":{"low": 16, "high": 26},
+    "temperature": {"low": 16, "high": 26},
     "humidity":   {"low": 30, "high": 70},
 }
 
@@ -54,14 +54,14 @@ logging.basicConfig(
 log = logging.getLogger("fog_node")
 
 # ── In-memory buffer ─────────────────────────────────────────────────────────
-_buffer: list[dict] = []
+_buffer = []
 _buffer_lock = threading.Lock()
 _stats = defaultdict(int)   # message counts per sensor type
 
 
 # ── Validation ───────────────────────────────────────────────────────────────
 
-def validate(reading: dict) -> tuple[bool, str]:
+def validate(reading):
     """Return (is_valid, reason). Rejects malformed or physically impossible readings."""
     sensor_type = reading.get("sensor_type")
     if sensor_type not in VALIDATION_RULES:
@@ -79,7 +79,10 @@ def validate(reading: dict) -> tuple[bool, str]:
     if value is None:
         return False, f"Missing field '{rule['field']}'"
     if not (rule["min"] <= value <= rule["max"]):
-        return False, f"{sensor_type} value {value} outside physical range [{rule['min']}, {rule['max']}]"
+        return False, (
+            f"{sensor_type} value {value} outside physical range "
+            f"[{rule['min']}, {rule['max']}]"
+        )
 
     return True, "ok"
 
@@ -97,8 +100,14 @@ def detect_alert(reading: dict) -> bool:
         h_val = r.get("humidity", {}).get("value")
         t_thr = ALERT_THRESHOLDS["temperature"]
         h_thr = ALERT_THRESHOLDS["humidity"]
-        t_alert = t_val is not None and (t_val < t_thr["low"] or (t_thr["high"] and t_val > t_thr["high"]))
-        h_alert = h_val is not None and (h_val < h_thr["low"] or (h_thr["high"] and h_val > h_thr["high"]))
+        t_alert = (
+            t_val is not None
+            and (t_val < t_thr["low"] or (t_thr["high"] and t_val > t_thr["high"]))
+        )
+        h_alert = (
+            h_val is not None
+            and (h_val < h_thr["low"] or (h_thr["high"] and h_val > h_thr["high"]))
+        )
         return t_alert or h_alert
 
     value = reading.get("value", 0)
@@ -165,7 +174,11 @@ class FogHandler(BaseHTTPRequestHandler):
         reading["fog_received_at"] = datetime.now(timezone.utc).isoformat()
 
         if reading["fog_alert"]:
-            log.warning("ALERT detected — %s %s", reading.get("sensor_type"), reading.get("value", ""))
+            log.warning(
+                "ALERT detected — %s %s",
+                reading.get("sensor_type"),
+                reading.get("value", ""),
+            )
 
         with _buffer_lock:
             _buffer.append(reading)
@@ -184,7 +197,7 @@ def build_sqs_client():
     return boto3.client("sqs", region_name=AWS_REGION)
 
 
-def dispatch_batch(batch: list[dict], sqs_client) -> bool:
+def dispatch_batch(batch, sqs_client):
     """Send a batch of readings to SQS as a single message."""
     if not SQS_QUEUE_URL:
         log.error("SQS_QUEUE_URL not set — cannot dispatch")

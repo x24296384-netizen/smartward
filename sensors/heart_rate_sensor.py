@@ -7,7 +7,6 @@ Sends readings to the fog node at a configurable rate.
 import json
 import os
 import random
-import socket
 import time
 from datetime import datetime, timezone
 
@@ -30,8 +29,8 @@ def generate_reading() -> dict:
     if random.random() < ANOMALY_CHANCE:
         # Simulate bradycardia (<60) or tachycardia (>100)
         value = random.choice([
-            random.uniform(30, 55),   # bradycardia
-            random.uniform(105, 150), # tachycardia
+            random.uniform(30, 55),    # bradycardia
+            random.uniform(105, 150),  # tachycardia
         ])
     else:
         base = random.uniform(NORMAL_MIN, NORMAL_MAX)

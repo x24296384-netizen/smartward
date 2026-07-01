@@ -73,7 +73,10 @@ def run():
         ok = send_to_fog(reading)
         status = "✓" if ok else "✗"
         alert = " *** ALERT ***" if reading["value"] < ALERT_THRESHOLD else ""
-        print(f"[SPO2] {status} {reading['value']}{reading['unit']}{alert} @ {reading['timestamp']}")
+        print(
+            f"[SPO2] {status} {reading['value']}{reading['unit']}"
+            f"{alert} @ {reading['timestamp']}"
+        )
         time.sleep(SEND_RATE_SECONDS)
 
 

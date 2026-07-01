@@ -92,7 +92,10 @@ def run():
         h = reading["readings"]["humidity"]
         t_alert = " [TEMP ALERT]" if t["alert"] else ""
         h_alert = " [HUMIDITY ALERT]" if h["alert"] else ""
-        print(f"[ENV] {status} {t['value']}°C{t_alert} | {h['value']}%RH{h_alert} @ {reading['timestamp']}")
+        print(
+            f"[ENV] {status} {t['value']}°C{t_alert} | "
+            f"{h['value']}%RH{h_alert} @ {reading['timestamp']}"
+        )
         time.sleep(SEND_RATE_SECONDS)
 
 
