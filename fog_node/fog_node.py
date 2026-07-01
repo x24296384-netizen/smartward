@@ -90,10 +90,8 @@ def validate(reading):
 def detect_alert(reading: dict) -> bool:
     """Return True if reading breaches a clinical alert threshold."""
     sensor_type = reading.get("sensor_type")
-    thresholds = ALERT_THRESHOLDS.get(sensor_type)
-    if thresholds is None:
-        return False
 
+    # Environment sensor has nested readings — handle before threshold lookup
     if sensor_type == "environment":
         r = reading.get("readings", {})
         t_val = r.get("temperature", {}).get("value")
@@ -109,6 +107,11 @@ def detect_alert(reading: dict) -> bool:
             and (h_val < h_thr["low"] or (h_thr["high"] and h_val > h_thr["high"]))
         )
         return t_alert or h_alert
+
+    # For scalar sensors, look up threshold by sensor type
+    thresholds = ALERT_THRESHOLDS.get(sensor_type)
+    if thresholds is None:
+        return False  # unknown sensor type — no alert
 
     value = reading.get("value", 0)
     low = thresholds.get("low")
