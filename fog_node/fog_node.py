@@ -33,17 +33,20 @@ MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", "20"))
 
 # Per-sensor validation rules
 VALIDATION_RULES = {
-    "heart_rate": {"min": 20, "max": 250, "field": "value"},
-    "spo2":       {"min": 50, "max": 100, "field": "value"},
-    "environment": None,  # validated per sub-reading inside the payload
+    "heart_rate":       {"min": 20, "max": 250, "field": "value"},
+    "spo2":             {"min": 50, "max": 100, "field": "value"},
+    "respiratory_rate": {"min": 1,  "max": 60,  "field": "value"},
+    "environment":   None,  # validated per sub-reading inside the payload
+    "blood_pressure": None,  # nested systolic/diastolic readings
 }
 
 # Alert thresholds (fog-level detection — fast local response)
 ALERT_THRESHOLDS = {
-    "heart_rate": {"low": 40, "high": 130},
-    "spo2":       {"low": 90, "high": None},
-    "temperature": {"low": 16, "high": 26},
-    "humidity":   {"low": 30, "high": 70},
+    "heart_rate":       {"low": 40, "high": 130},
+    "spo2":             {"low": 90, "high": None},
+    "respiratory_rate": {"low": 12, "high": 25},
+    "temperature":      {"low": 16, "high": 26},
+    "humidity":         {"low": 30, "high": 70},
 }
 
 logging.basicConfig(
@@ -107,6 +110,13 @@ def detect_alert(reading: dict) -> bool:
             and (h_val < h_thr["low"] or (h_thr["high"] and h_val > h_thr["high"]))
         )
         return t_alert or h_alert
+
+    # Blood pressure sensor has nested systolic/diastolic readings
+    if sensor_type == "blood_pressure":
+        r = reading.get("readings", {})
+        sys_alert = r.get("systolic", {}).get("alert", False)
+        dia_alert = r.get("diastolic", {}).get("alert", False)
+        return sys_alert or dia_alert
 
     # For scalar sensors, look up threshold by sensor type
     thresholds = ALERT_THRESHOLDS.get(sensor_type)
