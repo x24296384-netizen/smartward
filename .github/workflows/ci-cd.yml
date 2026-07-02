@@ -37,7 +37,7 @@ jobs:
           AWS_ACCESS_KEY_ID: testing
           AWS_SECRET_ACCESS_KEY: testing
 
-  # ── Package and deploy Lambdas ─────────────────────────────────────────────
+  # ── Deploy Lambda functions ───────────────────────────────────────────────
   deploy-lambdas:
     name: Deploy Lambda Functions
     needs: lint-and-test
@@ -54,27 +54,18 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      - name: Package and deploy sqs_processor Lambda
+      - name: Deploy sqs_processor Lambda
         run: |
           cd backend/lambda_functions
           zip sqs_processor.zip sqs_processor.py
           aws lambda update-function-code \
             --function-name smartward-sqs-processor \
             --zip-file fileb://sqs_processor.zip
-          echo "✓ sqs_processor deployed"
 
-      - name: Package and deploy dashboard_api Lambda
+      - name: Deploy dashboard_api Lambda
         run: |
           cd backend/lambda_functions
           zip dashboard_api.zip dashboard_api.py
           aws lambda update-function-code \
             --function-name smartward-dashboard-api \
             --zip-file fileb://dashboard_api.zip
-          echo "✓ dashboard_api deployed"
-
-      - name: Deploy dashboard to S3 (static hosting)
-        run: |
-          aws s3 sync dashboard/ s3://${{ secrets.S3_DASHBOARD_BUCKET }}/ \
-            --delete \
-            --cache-control "max-age=60"
-          echo "✓ Dashboard synced to S3"
