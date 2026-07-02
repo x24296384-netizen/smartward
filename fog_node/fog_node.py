@@ -78,6 +78,9 @@ def validate(reading):
         return True, "ok"
 
     rule = VALIDATION_RULES[sensor_type]
+    if rule is None:
+        # Nested reading type (blood_pressure) — no scalar validation needed
+        return True, "ok"
     value = reading.get(rule["field"])
     if value is None:
         return False, f"Missing field '{rule['field']}'"
