@@ -56,8 +56,8 @@ def get_readings(sensor_type, entity_id, entity_type, limit):
     Results are returned newest-first (ScanIndexForward=False).
 
     Key pattern:
-      pk = PATIENT#<patient_id>  (for heart_rate, spo2, systolic, diastolic, respiratory_rate)
-      pk = WARD#<ward_id>        (for temperature, humidity)
+      pk = PATIENT#<patient_id>  (heart_rate, spo2, systolic, diastolic, respiratory_rate)
+      pk = WARD#<ward_id>        (temperature, humidity)
       sk begins_with <sensor_type>#  (to filter by sensor type)
     """
     pk = f"{entity_type}#{entity_id}"
@@ -107,10 +107,28 @@ def lambda_handler(event, context):
     """
     API Gateway Lambda proxy integration entry point.
     Routes GET requests to the appropriate DynamoDB query function.
+
+    Supports both REST API (v1) and HTTP API (v2) event formats:
+      REST API (v1): path is at event["path"], method at event["httpMethod"]
+      HTTP API (v2):  path is at event["rawPath"], method at
+                       event["requestContext"]["http"]["method"]
     """
-    path = event.get("path", "/")
+    # Path: try v1 key first, fall back to v2 key
+    path = event.get("path") or event.get("rawPath", "/")
+
+    # HTTP APIs (v2) prefix rawPath with the stage name (e.g. "/prod/readings")
+    # Strip it so routing below still matches "/readings"
+    if path.startswith("/prod/"):
+        path = path[len("/prod"):]
+    elif path == "/prod":
+        path = "/"
+
     params = event.get("queryStringParameters") or {}  # None if no query params
-    method = event.get("httpMethod", "GET")
+
+    # Method: try v1 key first, fall back to v2 nested key
+    method = event.get("httpMethod") or event.get(
+        "requestContext", {}
+    ).get("http", {}).get("method", "GET")
 
     # Handle CORS preflight requests from the browser
     if method == "OPTIONS":
@@ -130,9 +148,11 @@ def lambda_handler(event, context):
         limit = min(int(params.get("limit", 50)), 200)  # cap at 200
 
         # Determine DynamoDB partition key based on sensor type
-        # Clinical/patient sensors (HR, SpO2, systolic, diastolic, respiratory rate) are keyed by patient
-        # Environment sensors are keyed by ward
-        if sensor_type in ("heart_rate", "spo2", "systolic", "diastolic", "respiratory_rate"):
+        # Patient sensors: HR, SpO2, systolic, diastolic, respiratory rate
+        # Ward sensors: temperature, humidity
+        if sensor_type in (
+            "heart_rate", "spo2", "systolic", "diastolic", "respiratory_rate"
+        ):
             entity_id = params.get("patient_id", "P001")
             entity_type = "PATIENT"
         else:
