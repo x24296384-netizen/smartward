@@ -103,6 +103,19 @@
     <canvas id="spo2-chart"></canvas>
   </div>
 
+  <!-- Blood Pressure card -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🩸 Blood Pressure — P001</span>
+      <span class="badge normal" id="bp-badge">Normal</span>
+    </div>
+    <div>
+      <div class="card-value" id="bp-value" style="color:var(--green)">—</div>
+      <div class="card-sub">mmHg (systolic/diastolic)</div>
+    </div>
+    <canvas id="bp-chart"></canvas>
+  </div>
+
   <!-- Temperature card -->
   <div class="card">
     <div class="card-header">
@@ -188,6 +201,7 @@
     spo2:        makeChart("spo2-chart", "#60a5fa", "SpO2",  80,  100),
     temperature: makeChart("temp-chart", "#fbbf24", "°C",    14,  30),
     humidity:    makeChart("hum-chart",  "#a78bfa", "%RH",   20,  80),
+    bp:          makeChart("bp-chart",   "#4ade80", "mmHg",  40,  180),
   };
 
   function addPoint(chart, label, value) {
@@ -235,6 +249,27 @@
     });
   }
 
+  function updateBPCard(readingsSys, readingsDia) {
+    if (!readingsSys || !readingsSys.length || !readingsDia || !readingsDia.length) return;
+    const sys = parseFloat(readingsSys[0].value);
+    const dia = parseFloat(readingsDia[0].value);
+
+    document.getElementById("bp-value").textContent =
+      `${sys.toFixed(0)}/${dia.toFixed(0)}`;
+
+    const badge = document.getElementById("bp-badge");
+    const isAlert = sys > 140 || sys < 90 || dia > 90 || dia < 60;
+    badge.textContent = isAlert ? "Alert" : "Normal";
+    badge.className = "badge " + (isAlert ? "alert" : "normal");
+
+    // Chart the systolic trend line
+    const ordered = [...readingsSys].reverse();
+    ordered.forEach(r => {
+      const t = new Date(r.timestamp).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      addPoint(charts.bp, t, parseFloat(r.value));
+    });
+  }
+
   function renderAlerts(alerts) {
     const list = document.getElementById("alert-list");
     if (!alerts || alerts.length === 0) {
@@ -261,11 +296,13 @@
     const dot = document.getElementById("status-dot");
     const statusText = document.getElementById("status-text");
     try {
-      const [hr, spo2, temp, hum, alertData] = await Promise.all([
+      const [hr, spo2, temp, hum, sys, dia, alertData] = await Promise.all([
         fetchReadings("heart_rate", { patient_id: "P001" }),
         fetchReadings("spo2",       { patient_id: "P001" }),
         fetchReadings("temperature",{ ward_id: "WARD-A" }),
         fetchReadings("humidity",   { ward_id: "WARD-A" }),
+        fetchReadings("systolic",   { patient_id: "P001" }),
+        fetchReadings("diastolic",  { patient_id: "P001" }),
         fetchAlerts(),
       ]);
 
@@ -273,6 +310,7 @@
       updateCard("spo2-value", "spo2-badge", charts.spo2,        spo2?.readings, 94, 100);
       updateCard("temp-value", "temp-badge", charts.temperature, temp?.readings, 18,  24);
       updateCard("hum-value",  "hum-badge",  charts.humidity,    hum?.readings,  40,  60);
+      updateBPCard(sys?.readings, dia?.readings);
       renderAlerts(alertData?.alerts);
 
       const hasAlerts = alertData?.alerts?.length > 0;

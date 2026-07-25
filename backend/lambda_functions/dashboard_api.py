@@ -9,6 +9,8 @@ Required environment variable:
 Endpoints (configured in API Gateway):
   GET /readings?sensor_type=heart_rate&patient_id=P001&limit=50
   GET /readings?sensor_type=spo2&patient_id=P001
+  GET /readings?sensor_type=systolic&patient_id=P001
+  GET /readings?sensor_type=diastolic&patient_id=P001
   GET /readings?sensor_type=temperature&ward_id=WARD-A
   GET /readings?sensor_type=humidity&ward_id=WARD-A
   GET /alerts?limit=20
@@ -54,7 +56,7 @@ def get_readings(sensor_type, entity_id, entity_type, limit):
     Results are returned newest-first (ScanIndexForward=False).
 
     Key pattern:
-      pk = PATIENT#<patient_id>  (for heart_rate, spo2)
+      pk = PATIENT#<patient_id>  (for heart_rate, spo2, systolic, diastolic, respiratory_rate)
       pk = WARD#<ward_id>        (for temperature, humidity)
       sk begins_with <sensor_type>#  (to filter by sensor type)
     """
@@ -128,9 +130,9 @@ def lambda_handler(event, context):
         limit = min(int(params.get("limit", 50)), 200)  # cap at 200
 
         # Determine DynamoDB partition key based on sensor type
-        # Clinical sensors (HR, SpO2) are keyed by patient
+        # Clinical/patient sensors (HR, SpO2, systolic, diastolic, respiratory rate) are keyed by patient
         # Environment sensors are keyed by ward
-        if sensor_type in ("heart_rate", "spo2"):
+        if sensor_type in ("heart_rate", "spo2", "systolic", "diastolic", "respiratory_rate"):
             entity_id = params.get("patient_id", "P001")
             entity_type = "PATIENT"
         else:

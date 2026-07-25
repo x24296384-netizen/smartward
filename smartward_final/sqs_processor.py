@@ -35,7 +35,7 @@ _table = _dynamodb.Table(TABLE_NAME)
 def flatten_reading(reading):
     """
     Convert a single fog-node reading dict into one or more DynamoDB items.
-    Environment readings produce two items (temperature + humidity) because
+    Environment and blood pressure readings each produce two items because
     they contain nested sub-readings rather than a single scalar value.
 
     DynamoDB key design:
@@ -76,7 +76,27 @@ def flatten_reading(reading):
             items.append(item)
         return items
 
-    # Heart rate and SpO2: single scalar value per reading
+    if sensor_type == "blood_pressure":
+        # Blood pressure sensor has nested systolic + diastolic readings
+        # Split into two separate DynamoDB items, same pattern as environment
+        items = []
+        patient_id = reading.get("patient_id", "")
+        for metric, data in reading.get("readings", {}).items():
+            item = {
+                **base,
+                "reading_id": str(uuid.uuid4()),  # each sub-reading gets its own ID
+                "sensor_type": metric,             # "systolic" or "diastolic"
+                "patient_id": patient_id,
+                "value": str(data.get("value", 0)),  # store as string (DynamoDB Decimal-safe)
+                "unit": data.get("unit", ""),
+                "alert": data.get("alert", False),
+                "pk": f"PATIENT#{patient_id}",
+                "sk": f"{metric}#{reading.get('timestamp', '')}",
+            }
+            items.append(item)
+        return items
+
+    # Heart rate, SpO2, and respiratory rate: single scalar value per reading
     item = {
         **base,
         "patient_id": reading.get("patient_id", ""),
