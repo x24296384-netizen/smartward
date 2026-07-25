@@ -170,4 +170,3 @@ def lambda_handler(event, context):
 
     # Unknown path
     return cors_response(404, {"error": "Not found", "path": path})
-    
