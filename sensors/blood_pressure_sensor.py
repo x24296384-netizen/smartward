@@ -32,7 +32,6 @@ SYSTOLIC_MIN, SYSTOLIC_MAX = 90, 120
 DIASTOLIC_MIN, DIASTOLIC_MAX = 60, 80
 ANOMALY_CHANCE = 0.05  # 5% chance of hypertensive/hypotensive reading
 
-
 def generate_reading():
     """Generate a blood pressure reading with realistic noise."""
     if random.random() < ANOMALY_CHANCE:

@@ -3,331 +3,332 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SmartWard — Patient Monitoring Dashboard</title>
+  <title>SmartWard — Elderly Home Care Monitor</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0f1117; --surface: #1a1d27; --card: #21263a;
-      --border: #2e3550; --text: #e2e8f0; --muted: #8892a4;
-      --teal: #2dd4bf; --amber: #fbbf24; --coral: #f87171;
-      --blue: #60a5fa; --green: #4ade80; --purple: #a78bfa;
-    }
-    body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; }
+    body { background: #f8fafc; color: #1e293b; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    /* Header */
     header {
+      background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+      padding: 16px 28px;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 24px; border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      box-shadow: 0 4px 12px rgba(13,148,136,0.3);
     }
-    header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
-    header h1 span { color: var(--teal); }
-    #status-badge {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: var(--muted);
+    .hdr-left { display: flex; align-items: center; gap: 12px; }
+    .hdr-logo {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
-    #status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
-    #status-dot.warn { background: var(--amber); }
-    #status-dot.alert { background: var(--coral); animation: pulse 1s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .hdr-title h1 { font-size: 18px; font-weight: 700; color: white; }
+    .hdr-title p { font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+    .hdr-right { display: flex; align-items: center; gap: 10px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.2); border-radius: 20px;
+      padding: 6px 14px; color: white; font-size: 12px; font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    #sdot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+    #sdot.warn { background: #fbbf24; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .upd-time { color: rgba(255,255,255,0.7); font-size: 11px; }
 
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; padding: 20px 24px; }
-    .card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      padding: 20px; display: flex; flex-direction: column; gap: 12px;
+    /* Home info banner */
+    .home-banner {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
-    .card-header { display: flex; align-items: center; justify-content: space-between; }
-    .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
-    .card-value { font-size: 32px; font-weight: 700; line-height: 1; }
-    .card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .badge {
-      padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    .home-icon {
+      width: 52px; height: 52px; border-radius: 16px;
+      background: linear-gradient(135deg, #e0f2fe, #dbeafe);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; flex-shrink: 0;
     }
-    .badge.normal { background: rgba(74,222,128,0.15); color: var(--green); }
-    .badge.alert  { background: rgba(248,113,113,0.15); color: var(--coral); }
-    .badge.warn   { background: rgba(251,191,36,0.15); color: var(--amber); }
+    .home-details { flex: 1; }
+    .home-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .home-addr { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .home-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .htag {
+      padding: 3px 10px; border-radius: 10px; font-size: 10px; font-weight: 600;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .htag-teal  { background: #ccfbf1; color: #0f766e; }
+    .htag-blue  { background: #dbeafe; color: #1d4ed8; }
+    .htag-green { background: #dcfce7; color: #15803d; }
+    .carer-box { text-align: right; flex-shrink: 0; }
+    .carer-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    .carer-name { font-size: 13px; font-weight: 600; color: #0f172a; margin-top: 2px; }
+    .carer-status { font-size: 11px; color: #16a34a; margin-top: 2px; }
 
-    canvas { max-height: 140px; }
+    /* Vitals grid */
+    .grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; padding: 20px 28px 10px; }
+    @media(min-width:900px){ .grid { grid-template-columns: repeat(4,1fr); } }
 
-    .alerts-section { padding: 0 24px 24px; }
-    .alerts-section h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .alert-list { display: flex; flex-direction: column; gap: 8px; }
-    .alert-item {
-      background: var(--card); border: 1px solid rgba(248,113,113,0.3);
-      border-left: 3px solid var(--coral); border-radius: 8px;
-      padding: 10px 14px; font-size: 13px;
+    .vcard {
+      background: white; border-radius: 16px; padding: 18px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .vcard:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+    .vc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .vc-icon-box {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .ic-red    { background: #fee2e2; }
+    .ic-blue   { background: #dbeafe; }
+    .ic-amber  { background: #fef3c7; }
+    .ic-purple { background: #ede9fe; }
+    .ic-green  { background: #dcfce7; }
+    .badge { padding: 4px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .badge.ok  { background: #dcfce7; color: #15803d; }
+    .badge.bad { background: #fee2e2; color: #dc2626; }
+    .vc-label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #94a3b8; margin: 10px 0 4px; }
+    .vc-val { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+    .vc-red    { color: #dc2626; }
+    .vc-blue   { color: #2563eb; }
+    .vc-amber  { color: #d97706; }
+    .vc-purple { color: #7c3aed; }
+    .vc-green  { color: #15803d; }
+    .vc-unit { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+    canvas { max-height: 70px; margin-top: 12px; }
+    .vc-range { font-size: 10px; color: #cbd5e1; margin-top: 6px; }
+
+    /* Alerts */
+    .alerts-wrap { padding: 10px 28px 24px; }
+    .sec-hdr { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .alert-row {
+      background: white; border-radius: 12px;
+      border-left: 4px solid #ef4444;
+      padding: 12px 16px; margin-bottom: 8px;
       display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
-    .alert-item .alert-type { font-weight: 600; color: var(--coral); text-transform: capitalize; }
-    .alert-item .alert-meta { color: var(--muted); font-size: 11px; }
-    #no-alerts { color: var(--muted); font-size: 13px; padding: 12px 0; }
+    .al-type { font-size: 13px; font-weight: 600; color: #dc2626; text-transform: capitalize; }
+    .al-val  { font-size: 11px; color: #64748b; margin-top: 3px; }
+    .al-time { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+    .no-alert {
+      background: white; border-radius: 12px; padding: 18px;
+      text-align: center; color: #16a34a; font-size: 13px; font-weight: 500;
+      border: 1px solid #dcfce7;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
 
-    footer { padding: 16px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+    footer {
+      background: white; border-top: 1px solid #e2e8f0;
+      padding: 12px 28px; text-align: center; font-size: 11px; color: #94a3b8;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Smart<span>Ward</span> — Patient Monitoring</h1>
-  <div id="status-badge">
-    <div id="status-dot"></div>
-    <span id="status-text">Connecting...</span>
-    <span id="last-update"></span>
+  <div class="hdr-left">
+    <div class="hdr-logo">🏠</div>
+    <div class="hdr-title">
+      <h1>SmartWard — Elderly Home Care</h1>
+      <p>Real-time health monitoring · AWS IoT + Fog Computing · NCI MSc 2026</p>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="status-pill"><div id="sdot"></div><span id="stext">Connecting...</span></div>
+    <div class="upd-time" id="lupd"></div>
   </div>
 </header>
 
+<!-- Home info banner -->
+<div class="home-banner">
+  <div class="home-icon">🏡</div>
+  <div class="home-details">
+    <div class="home-name">Margaret O'Brien &nbsp;·&nbsp; Age 78</div>
+    <div class="home-addr">📍 14 Maple Drive, Dublin 6, Ireland &nbsp;·&nbsp; Patient ID: P001</div>
+    <div class="home-tags">
+      <span class="htag htag-teal">🌫️ Fog Node Active</span>
+      <span class="htag htag-blue">☁️ AWS Connected</span>
+      <span class="htag htag-green">✅ 5 Sensors Running</span>
+    </div>
+  </div>
+  <div class="carer-box">
+    <div class="carer-label">Primary Carer</div>
+    <div class="carer-name">Dr. Sarah Murphy</div>
+    <div class="carer-status">🔔 SNS Alerts Active</div>
+  </div>
+</div>
+
+<!-- Vitals grid -->
 <div class="grid">
-
-  <!-- Heart Rate card -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">❤ Heart Rate — P001</span>
-      <span class="badge normal" id="hr-badge">Normal</span>
+  <div class="vcard">
+    <div class="vc-top">
+      <div class="vc-icon-box ic-red">❤️</div>
+      <span class="badge ok" id="hr-b">Normal</span>
     </div>
-    <div>
-      <div class="card-value" id="hr-value" style="color:var(--coral)">—</div>
-      <div class="card-sub">bpm</div>
-    </div>
-    <canvas id="hr-chart"></canvas>
+    <div class="vc-label">Heart Rate</div>
+    <div class="vc-val vc-red" id="hr-v">—</div>
+    <div class="vc-unit">beats per minute</div>
+    <canvas id="hr-c"></canvas>
+    <div class="vc-range">Normal: 60 – 100 bpm</div>
   </div>
 
-  <!-- SpO2 card -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">🫁 Blood Oxygen (SpO₂) — P001</span>
-      <span class="badge normal" id="spo2-badge">Normal</span>
+  <div class="vcard">
+    <div class="vc-top">
+      <div class="vc-icon-box ic-blue">🫁</div>
+      <span class="badge ok" id="spo2-b">Normal</span>
     </div>
-    <div>
-      <div class="card-value" id="spo2-value" style="color:var(--blue)">—</div>
-      <div class="card-sub">% saturation</div>
-    </div>
-    <canvas id="spo2-chart"></canvas>
+    <div class="vc-label">Blood Oxygen (SpO₂)</div>
+    <div class="vc-val vc-blue" id="spo2-v">—</div>
+    <div class="vc-unit">% saturation</div>
+    <canvas id="spo2-c"></canvas>
+    <div class="vc-range">Normal: 94 – 100 %</div>
   </div>
 
-  <!-- Blood Pressure card -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">🩸 Blood Pressure — P001</span>
-      <span class="badge normal" id="bp-badge">Normal</span>
+  <div class="vcard">
+    <div class="vc-top">
+      <div class="vc-icon-box ic-green">🩸</div>
+      <span class="badge ok" id="bp-b">Normal</span>
     </div>
-    <div>
-      <div class="card-value" id="bp-value" style="color:var(--green)">—</div>
-      <div class="card-sub">mmHg (systolic/diastolic)</div>
-    </div>
-    <canvas id="bp-chart"></canvas>
+    <div class="vc-label">Blood Pressure</div>
+    <div class="vc-val vc-green" id="bp-v">—</div>
+    <div class="vc-unit">mmHg (systolic/diastolic)</div>
+    <canvas id="bp-c"></canvas>
+    <div class="vc-range">Normal: 90–120 / 60–80 mmHg</div>
   </div>
 
-  <!-- Temperature card -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">🌡 Ward Temperature — WARD-A</span>
-      <span class="badge normal" id="temp-badge">Normal</span>
+  <div class="vcard">
+    <div class="vc-top">
+      <div class="vc-icon-box ic-amber">🌡️</div>
+      <span class="badge ok" id="tmp-b">Normal</span>
     </div>
-    <div>
-      <div class="card-value" id="temp-value" style="color:var(--amber)">—</div>
-      <div class="card-sub">°C</div>
-    </div>
-    <canvas id="temp-chart"></canvas>
+    <div class="vc-label">Room Temperature</div>
+    <div class="vc-val vc-amber" id="tmp-v">—</div>
+    <div class="vc-unit">degrees Celsius</div>
+    <canvas id="tmp-c"></canvas>
+    <div class="vc-range">Normal: 18 – 26 °C</div>
   </div>
 
-  <!-- Humidity card -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">💧 Ward Humidity — WARD-A</span>
-      <span class="badge normal" id="hum-badge">Normal</span>
+  <div class="vcard">
+    <div class="vc-top">
+      <div class="vc-icon-box ic-purple">💧</div>
+      <span class="badge ok" id="hum-b">Normal</span>
     </div>
-    <div>
-      <div class="card-value" id="hum-value" style="color:var(--purple)">—</div>
-      <div class="card-sub">%RH</div>
-    </div>
-    <canvas id="hum-chart"></canvas>
-  </div>
-
-</div>
-
-<!-- Recent alerts -->
-<div class="alerts-section">
-  <h2>Recent Alerts</h2>
-  <div class="alert-list" id="alert-list">
-    <div id="no-alerts">No alerts detected.</div>
+    <div class="vc-label">Room Humidity</div>
+    <div class="vc-val vc-purple" id="hum-v">—</div>
+    <div class="vc-unit">% relative humidity</div>
+    <canvas id="hum-c"></canvas>
+    <div class="vc-range">Normal: 40 – 60 %RH</div>
   </div>
 </div>
 
-<footer>SmartWard IoT Monitoring · NCI MSc Cloud Computing 2026 · Data refreshes every 10s</footer>
+<!-- Alerts -->
+<div class="alerts-wrap">
+  <div class="sec-hdr">🚨 Recent Clinical Alerts</div>
+  <div id="al-list"><div class="no-alert">✅ All vitals within normal range — no alerts detected</div></div>
+</div>
+
+<footer>SmartWard Elderly Home Care Monitoring · NCI MSc Cloud Computing 2026 · AWS IoT + Fog/Edge Computing · GitHub: x24296384-netizen/smartward</footer>
 
 <script>
-  // ── Config ─────────────────────────────────────────────────────────────────
-  // Replace with your API Gateway base URL before deploying
-  const API_BASE = window.API_BASE || "https://ir5qcepi28.execute-api.us-east-1.amazonaws.com";
-  const REFRESH_MS = 10_000;
-  const MAX_POINTS = 30;
+const API="https://ir5qcepi28.execute-api.us-east-1.amazonaws.com";
+const MAX=20;
 
-  // ── Chart factory ──────────────────────────────────────────────────────────
-  function makeChart(id, color, label, yMin, yMax) {
-    const ctx = document.getElementById(id).getContext("2d");
-    return new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: [],
-        datasets: [{
-          label,
-          data: [],
-          borderColor: color,
-          backgroundColor: color + "22",
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.35,
-          fill: true,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        animation: { duration: 300 },
-        plugins: { legend: { display: false }, tooltip: { enabled: true } },
-        scales: {
-          x: { display: false },
-          y: {
-            min: yMin, max: yMax,
-            grid: { color: "rgba(255,255,255,0.04)" },
-            ticks: { color: "#8892a4", font: { size: 10 } },
-          }
-        }
-      }
-    });
-  }
+function mkChart(id,color,lo,hi){
+  return new Chart(document.getElementById(id).getContext("2d"),{
+    type:"line",
+    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+"22",borderWidth:2,pointRadius:0,tension:0.4,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:true,animation:{duration:300},
+      plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{min:lo,max:hi,grid:{color:"rgba(0,0,0,0.04)"},ticks:{color:"#cbd5e1",font:{size:9}}}}}
+  });
+}
 
-  const charts = {
-    heart_rate:  makeChart("hr-chart",   "#f87171", "bpm",   40,  160),
-    spo2:        makeChart("spo2-chart", "#60a5fa", "SpO2",  80,  100),
-    temperature: makeChart("temp-chart", "#fbbf24", "°C",    14,  30),
-    humidity:    makeChart("hum-chart",  "#a78bfa", "%RH",   20,  80),
-    bp:          makeChart("bp-chart",   "#4ade80", "mmHg",  40,  180),
-  };
+const charts={
+  heart_rate:mkChart("hr-c","#ef4444",40,160),
+  spo2:mkChart("spo2-c","#3b82f6",80,100),
+  bp:mkChart("bp-c","#15803d",40,180),
+  temperature:mkChart("tmp-c","#f59e0b",14,30),
+  humidity:mkChart("hum-c","#8b5cf6",20,80),
+};
 
-  function addPoint(chart, label, value) {
-    chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > MAX_POINTS) {
-      chart.data.labels.shift();
-      chart.data.datasets[0].data.shift();
-    }
-    chart.update("none");
-  }
+function addPt(chart,label,val){
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(val);
+  if(chart.data.labels.length>MAX){chart.data.labels.shift();chart.data.datasets[0].data.shift();}
+  chart.update("none");
+}
 
-  // ── Fetch helpers ──────────────────────────────────────────────────────────
-  async function fetchReadings(sensorType, params = {}) {
-    const qs = new URLSearchParams({ sensor_type: sensorType, limit: 50, ...params });
-    const resp = await fetch(`${API_BASE}/readings?${qs}`);
-    if (!resp.ok) return null;
-    return resp.json();
-  }
+function updateCard(vid,bid,chart,readings,lo,hi){
+  if(!readings||!readings.length)return;
+  const val=parseFloat(readings[0].value);
+  document.getElementById(vid).textContent=isNaN(val)?"—":val.toFixed(1);
+  const isAlert=val<lo||val>hi;
+  const b=document.getElementById(bid);
+  b.textContent=isAlert?"⚠ Alert":"Normal";
+  b.className="badge "+(isAlert?"bad":"ok");
+  [...readings].reverse().forEach(r=>{
+    const t=new Date(r.timestamp).toLocaleTimeString("en-IE",{hour:"2-digit",minute:"2-digit"});
+    addPt(chart,t,parseFloat(r.value));
+  });
+}
 
-  async function fetchAlerts() {
-    const resp = await fetch(`${API_BASE}/alerts?limit=10`);
-    if (!resp.ok) return null;
-    return resp.json();
-  }
+function updateBPCard(sysReadings,diaReadings){
+  if(!sysReadings||!sysReadings.length||!diaReadings||!diaReadings.length)return;
+  const sys=parseFloat(sysReadings[0].value);
+  const dia=parseFloat(diaReadings[0].value);
+  document.getElementById("bp-v").textContent=`${sys.toFixed(0)}/${dia.toFixed(0)}`;
+  const isAlert=sys>140||sys<90||dia>90||dia<60;
+  const b=document.getElementById("bp-b");
+  b.textContent=isAlert?"⚠ Alert":"Normal";
+  b.className="badge "+(isAlert?"bad":"ok");
+  [...sysReadings].reverse().forEach(r=>{
+    const t=new Date(r.timestamp).toLocaleTimeString("en-IE",{hour:"2-digit",minute:"2-digit"});
+    addPt(charts.bp,t,parseFloat(r.value));
+  });
+}
 
-  // ── Update UI ─────────────────────────────────────────────────────────────
-  function updateCard(valueId, badgeId, chart, readings, normalMin, normalMax) {
-    if (!readings || readings.length === 0) return;
-    const latest = readings[0];
-    const val = parseFloat(latest.value);
+function renderAlerts(alerts){
+  const el=document.getElementById("al-list");
+  if(!alerts||!alerts.length){el.innerHTML='<div class="no-alert">✅ All vitals within normal range — no alerts detected</div>';return;}
+  el.innerHTML=alerts.slice(0,5).map(a=>{
+    const ts=new Date(a.timestamp||"").toLocaleTimeString("en-IE");
+    return `<div class="alert-row">
+      <div><div class="al-type">⚠️ ${(a.sensor_type||"").replace(/_/g," ")}</div>
+      <div class="al-val">Value: ${parseFloat(a.value||0).toFixed(1)} ${a.unit||""} · Patient: ${a.patient_id||a.ward_id||"P001"}</div></div>
+      <div class="al-time">${ts}</div></div>`;
+  }).join("");
+}
 
-    document.getElementById(valueId).textContent = isNaN(val) ? "—" : val.toFixed(1);
-
-    const badge = document.getElementById(badgeId);
-    const isAlert = val < normalMin || val > normalMax;
-    badge.textContent = isAlert ? "Alert" : "Normal";
-    badge.className = "badge " + (isAlert ? "alert" : "normal");
-
-    // Add all fetched points (newest first → reverse for chart)
-    const ordered = [...readings].reverse();
-    ordered.forEach(r => {
-      const t = new Date(r.timestamp).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      addPoint(chart, t, parseFloat(r.value));
-    });
-  }
-
-  function updateBPCard(readingsSys, readingsDia) {
-    if (!readingsSys || !readingsSys.length || !readingsDia || !readingsDia.length) return;
-    const sys = parseFloat(readingsSys[0].value);
-    const dia = parseFloat(readingsDia[0].value);
-
-    document.getElementById("bp-value").textContent =
-      `${sys.toFixed(0)}/${dia.toFixed(0)}`;
-
-    const badge = document.getElementById("bp-badge");
-    const isAlert = sys > 140 || sys < 90 || dia > 90 || dia < 60;
-    badge.textContent = isAlert ? "Alert" : "Normal";
-    badge.className = "badge " + (isAlert ? "alert" : "normal");
-
-    // Chart the systolic trend line
-    const ordered = [...readingsSys].reverse();
-    ordered.forEach(r => {
-      const t = new Date(r.timestamp).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      addPoint(charts.bp, t, parseFloat(r.value));
-    });
-  }
-
-  function renderAlerts(alerts) {
-    const list = document.getElementById("alert-list");
-    if (!alerts || alerts.length === 0) {
-      list.innerHTML = '<div id="no-alerts">No alerts detected.</div>';
-      return;
-    }
-    list.innerHTML = alerts.map(a => {
-      const ts = new Date(a.timestamp || a.sk?.split("#")[1] || "").toLocaleTimeString("en-IE");
-      const entity = a.patient_id || a.ward_id || "—";
-      return `
-        <div class="alert-item">
-          <div>
-            <span class="alert-type">${(a.sensor_type || "").replace(/_/g," ")}</span>
-            — value: <strong>${parseFloat(a.value).toFixed(1)} ${a.unit || ""}</strong>
-            &nbsp;·&nbsp; ${entity}
-          </div>
-          <div class="alert-meta">${ts}</div>
-        </div>`;
-    }).join("");
-  }
-
-  // ── Refresh cycle ──────────────────────────────────────────────────────────
-  async function refresh() {
-    const dot = document.getElementById("status-dot");
-    const statusText = document.getElementById("status-text");
-    try {
-      const [hr, spo2, temp, hum, sys, dia, alertData] = await Promise.all([
-        fetchReadings("heart_rate", { patient_id: "P001" }),
-        fetchReadings("spo2",       { patient_id: "P001" }),
-        fetchReadings("temperature",{ ward_id: "WARD-A" }),
-        fetchReadings("humidity",   { ward_id: "WARD-A" }),
-        fetchReadings("systolic",   { patient_id: "P001" }),
-        fetchReadings("diastolic",  { patient_id: "P001" }),
-        fetchAlerts(),
-      ]);
-
-      updateCard("hr-value",   "hr-badge",   charts.heart_rate,  hr?.readings,   60, 100);
-      updateCard("spo2-value", "spo2-badge", charts.spo2,        spo2?.readings, 94, 100);
-      updateCard("temp-value", "temp-badge", charts.temperature, temp?.readings, 18,  24);
-      updateCard("hum-value",  "hum-badge",  charts.humidity,    hum?.readings,  40,  60);
-      updateBPCard(sys?.readings, dia?.readings);
-      renderAlerts(alertData?.alerts);
-
-      const hasAlerts = alertData?.alerts?.length > 0;
-      dot.className = hasAlerts ? "alert" : "";
-      statusText.textContent = hasAlerts ? "Alerts active" : "Live";
-      document.getElementById("last-update").textContent =
-        "· Updated " + new Date().toLocaleTimeString("en-IE");
-
-    } catch (err) {
-      dot.className = "warn";
-      statusText.textContent = "API unreachable";
-      console.error(err);
-    }
-  }
-
-  refresh();
-  setInterval(refresh, REFRESH_MS);
+async function refresh(){
+  const dot=document.getElementById("sdot"),st=document.getElementById("stext");
+  try{
+    const[hr,sp,sys,dia,tm,hm,al]=await Promise.all([
+      fetch(API+"/readings?sensor_type=heart_rate&patient_id=P001&limit=20").then(r=>r.json()),
+      fetch(API+"/readings?sensor_type=spo2&patient_id=P001&limit=20").then(r=>r.json()),
+      fetch(API+"/readings?sensor_type=systolic&patient_id=P001&limit=20").then(r=>r.json()),
+      fetch(API+"/readings?sensor_type=diastolic&patient_id=P001&limit=20").then(r=>r.json()),
+      fetch(API+"/readings?sensor_type=temperature&ward_id=WARD-A&limit=20").then(r=>r.json()),
+      fetch(API+"/readings?sensor_type=humidity&ward_id=WARD-A&limit=20").then(r=>r.json()),
+      fetch(API+"/alerts?limit=10").then(r=>r.json()),
+    ]);
+    updateCard("hr-v","hr-b",charts.heart_rate,hr.readings,60,100);
+    updateCard("spo2-v","spo2-b",charts.spo2,sp.readings,94,100);
+    updateBPCard(sys.readings,dia.readings);
+    updateCard("tmp-v","tmp-b",charts.temperature,tm.readings,18,24);
+    updateCard("hum-v","hum-b",charts.humidity,hm.readings,40,60);
+    renderAlerts(al.alerts);
+    const hasAl=al.alerts&&al.alerts.length>0;
+    dot.className=hasAl?"warn":"";
+    st.textContent=hasAl?"⚠ Alerts Active":"✓ All Vitals Normal";
+    document.getElementById("lupd").textContent="Updated "+new Date().toLocaleTimeString("en-IE");
+  }catch(e){dot.className="warn";st.textContent="Connection Error";}
+}
+refresh();
+setInterval(refresh,10000);
 </script>
 </body>
 </html>
