@@ -1,167 +1,103 @@
-SmartWard — IoT Patient Monitoring System
-NCI MSc Cloud Computing 2026 | Fog and Edge Computing (H9FECC)
+SmartWard - Installation Instructions
+=======================================
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OVERVIEW
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-SmartWard simulates a hospital ward IoT monitoring system using a
-three-layer fog/edge computing architecture:
-
-  Sensor Layer  → three mock sensors (heart rate, SpO2, environment)
-  Fog Layer     → virtual fog node (Python HTTP server + SQS dispatcher)
-  Cloud Layer   → AWS SQS + Lambda + DynamoDB + API Gateway + dashboard
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROJECT STRUCTURE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-smartward/
-├── sensors/
-│   ├── heart_rate_sensor.py      Mock heart rate sensor (bpm)
-│   ├── spo2_sensor.py            Mock blood oxygen sensor (%)
-│   └── environment_sensor.py     Mock temp + humidity sensor
-├── fog_node/
-│   └── fog_node.py               Virtual fog node (HTTP + SQS dispatch)
-├── backend/
-│   └── lambda_functions/
-│       ├── sqs_processor.py      Lambda: SQS → DynamoDB + SNS alerts
-│       └── dashboard_api.py      Lambda: API Gateway → DynamoDB query
-├── dashboard/
-│   └── index.html                Single-page live monitoring dashboard
-├── infrastructure/
-│   └── setup_infrastructure.py   Creates AWS resources (run once)
-├── .github/workflows/
-│   └── ci-cd.yml                 GitHub Actions pipeline
-└── README.txt                    This file
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PREREQUISITES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--------------
+- Python 3.12+ installed
+- An AWS account (AWS Academy Learner Lab or equivalent) with access to:
+  SQS, Lambda, DynamoDB, SNS, API Gateway, S3
+- AWS CLI configured with valid credentials
+- Git
 
-- Python 3.10+
-- AWS CLI configured (AWS Academy credentials)
-- boto3: pip install boto3
+REPOSITORY STRUCTURE
+---------------------
+sensors/              - Five Python sensor scripts (heart_rate, spo2,
+                         blood_pressure, respiratory_rate, environment)
+fog_node/              - Fog node HTTP server (fog_node.py)
+backend/lambda_functions/
+                       - sqs_processor.py (SQS -> DynamoDB + SNS)
+                       - dashboard_api.py (API Gateway -> DynamoDB reads)
+dashboard/             - index.html (live monitoring dashboard, deployed to S3)
+.github/workflows/     - CI/CD pipeline (ci-cd.yml)
+tests/                 - pytest unit tests
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 1 — AWS SETUP (run once)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AWS SETUP (one-time, manual via AWS Console)
+----------------------------------------------
+1. Create an SQS standard queue named "smartward-sensor-queue".
+2. Create a DynamoDB table named "smartward-readings":
+   - Partition key: pk (String)
+   - Sort key: sk (String)
+   - Capacity mode: On-demand
+   - Enable Time to Live (TTL) on attribute "ttl"
+3. Create an SNS topic named "smartward-alerts". Subscribe an email
+   address to receive alert notifications (confirm the subscription
+   via the email AWS sends).
+4. Create two Lambda functions (Python 3.12 runtime):
+   - smartward-sqs-processor
+     Handler: sqs_processor.lambda_handler
+     Trigger: SQS (smartward-sensor-queue)
+     Environment variables:
+       DYNAMODB_TABLE = smartward-readings
+       SNS_TOPIC_ARN  = <ARN of smartward-alerts topic>
+   - smartward-dashboard-api
+     Handler: dashboard_api.lambda_handler
+     Trigger: API Gateway
+     Environment variables:
+       DYNAMODB_TABLE = smartward-readings
+5. Create an API Gateway (HTTP API) named "smartward-api" with two
+   routes: GET /readings and GET /alerts, both pointing to
+   smartward-dashboard-api. Deploy a stage (e.g. "prod").
+6. Create an S3 bucket (e.g. "smartward-dashboard-2026") with static
+   website hosting enabled. Upload dashboard/index.html as "index.html".
+7. In dashboard/index.html, set the API_BASE constant to your API
+   Gateway's invoke URL.
 
-1. Set your AWS Academy credentials in ~/.aws/credentials or via:
-     export AWS_ACCESS_KEY_ID=...
-     export AWS_SECRET_ACCESS_KEY=...
-     export AWS_SESSION_TOKEN=...
+RUNNING LOCALLY
+----------------
+1. Clone the repository:
+     git clone https://github.com/x24296384-netizen/smartward.git
+     cd smartward
 
-2. Run the infrastructure setup script:
-     python infrastructure/setup_infrastructure.py
+2. Install dependencies:
+     pip install -r requirements.txt --break-system-packages
 
-   This creates:
-     - DynamoDB table: smartward-readings (PAY_PER_REQUEST, TTL enabled)
-     - SQS queue: smartward-sensor-queue
-     - SNS topic: smartward-alerts
+3. Configure AWS credentials (one-time per session):
+     aws configure set aws_access_key_id YOUR_KEY
+     aws configure set aws_secret_access_key YOUR_SECRET
+     aws configure set aws_session_token YOUR_TOKEN   (if using
+       temporary credentials, e.g. AWS Academy)
 
-3. Copy the exported environment variables it prints.
+4. Set environment variables and start the fog node:
+     $env:SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/<account-id>/smartward-sensor-queue"
+     $env:AWS_DEFAULT_REGION="us-east-1"
+     python fog_node/fog_node.py
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 2 — DEPLOY LAMBDA FUNCTIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. In separate terminal windows, start each sensor:
+     python sensors/heart_rate_sensor.py
+     python sensors/spo2_sensor.py
+     python sensors/blood_pressure_sensor.py
+     python sensors/respiratory_rate_sensor.py
+     python sensors/environment_sensor.py
 
-Create two Lambda functions in the AWS Console (Python 3.12 runtime):
+6. Open the dashboard in a browser at your S3 static website URL to
+   view live readings and alerts.
 
-  Function 1: smartward-sqs-processor
-    - Source: backend/lambda_functions/sqs_processor.py
-    - Trigger: SQS queue (smartward-sensor-queue), batch size 5
-    - Env vars: DYNAMODB_TABLE=smartward-readings
-                SNS_TOPIC_ARN=<your-topic-arn>
-    - Timeout: 30s | Memory: 256MB
+RUNNING TESTS
+--------------
+     pytest tests/
 
-  Function 2: smartward-dashboard-api
-    - Source: backend/lambda_functions/dashboard_api.py
-    - Trigger: API Gateway (HTTP API)
-    - Env vars: DYNAMODB_TABLE=smartward-readings
-    - Timeout: 10s | Memory: 128MB
-    - Routes: GET /readings, GET /alerts
+CI/CD
+-----
+Pushing to the "main" branch automatically triggers GitHub Actions,
+which lints the code (flake8), runs the pytest suite, and deploys the
+updated Lambda functions to AWS. See .github/workflows/ci-cd.yml.
 
-Note: Uploading via GitHub Actions (push to main) also deploys automatically.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 3 — RUN THE FOG NODE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Set environment variables (from Step 1 output), then:
-
-  export SQS_QUEUE_URL='https://sqs.us-east-1.amazonaws.com/...'
-  export DYNAMODB_TABLE='smartward-readings'
-  export AWS_REGION='us-east-1'
-  export BATCH_INTERVAL=10       # seconds between SQS dispatches
-  export FOG_PORT=5000
-
-  python fog_node/fog_node.py
-
-The fog node listens on http://localhost:5000/ingest
-Health check: http://localhost:5000/health
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 4 — RUN THE SENSORS (separate terminals)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Terminal 1:
-  PATIENT_ID=P001 SENSOR_ID=HR-01 HEART_RATE_INTERVAL=2 \
-    python sensors/heart_rate_sensor.py
-
-Terminal 2:
-  PATIENT_ID=P001 SENSOR_ID=SPO2-01 SPO2_INTERVAL=3 \
-    python sensors/spo2_sensor.py
-
-Terminal 3:
-  WARD_ID=WARD-A SENSOR_ID=ENV-01 ENV_INTERVAL=10 \
-    python sensors/environment_sensor.py
-
-To simulate an alert: set SPO2_INTERVAL to 1 — the 4% anomaly rate
-will trigger a critical reading within ~25 seconds.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 5 — VIEW THE DASHBOARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Option A — Local (no S3): Open dashboard/index.html in a browser.
-  Edit the API_BASE variable at the top of the script section to your
-  API Gateway URL, or use a local proxy if running dashboard_api locally.
-
-Option B — S3 static hosting:
-  aws s3 sync dashboard/ s3://YOUR-BUCKET-NAME/ --delete
-  Enable static website hosting on the bucket.
-  Access at: http://YOUR-BUCKET-NAME.s3-website-us-east-1.amazonaws.com
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONFIGURABLE PARAMETERS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-All configurable via environment variables:
-
-  FOG_HOST              Fog node bind address (default: 0.0.0.0)
-  FOG_PORT              Fog node port (default: 5000)
-  SQS_QUEUE_URL         SQS queue URL (required)
-  AWS_REGION            AWS region (default: us-east-1)
-  BATCH_INTERVAL        Seconds between SQS dispatches (default: 10)
-  MAX_BATCH_SIZE        Max readings per SQS message (default: 20)
-  HEART_RATE_INTERVAL   Heart rate sensor send rate seconds (default: 2)
-  SPO2_INTERVAL         SpO2 sensor send rate seconds (default: 3)
-  ENV_INTERVAL          Environment sensor send rate seconds (default: 10)
-  PATIENT_ID            Patient ID for HR/SpO2 sensors (default: P001)
-  WARD_ID               Ward ID for environment sensor (default: WARD-A)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REUSE FROM PRIOR WORK
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-The following components are adapted from the ToolLend project
-(NCI Cloud Platform Programming CA, April 2026):
-
-  - SQS message dispatch pattern (fog_node.py → sqs_processor.py)
-  - SNS alert publishing (sqs_processor.py)
-  - DynamoDB write pattern (sqs_processor.py)
-  - GitHub Actions CI/CD pipeline structure (ci-cd.yml)
-  - CloudWatch logging configuration
-
-All reuse is cited in the project report (Section IV, Implementation).
+NOTES
+-----
+- Sensor read/dispatch intervals and anomaly rates can be adjusted via
+  environment variables in each sensor script.
+- AWS Academy temporary credentials expire periodically; if you see
+  authentication errors, refresh your credentials and restart the fog
+  node in a fresh terminal session (old credentials cached as
+  environment variables in an existing terminal can override the
+  refreshed credentials file).
